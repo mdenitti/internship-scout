@@ -3,6 +3,9 @@
  * they can be unit tested directly.
  */
 
+/** Upper bound on strip/decode rounds, so double-encoded input converges without spinning. */
+const MAX_STRIP_PASSES = 4;
+
 const NAMED_ENTITIES: Record<string, string> = {
   amp: '&',
   lt: '<',
@@ -45,12 +48,8 @@ function safeFromCodePoint(code: number): string {
   }
 }
 
-/**
- * Convert untrusted HTML-ish source text into plain text. We never render external
- * HTML in the UI, so stripping here is both a normalization and a security step.
- */
-export function stripHtml(input: string | undefined | null): string {
-  if (!input) return '';
+/** One pass: remove markup, then resolve the entities that were hiding it. */
+function stripOnce(input: string): string {
   return decodeEntities(
     input
       .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
@@ -59,6 +58,26 @@ export function stripHtml(input: string | undefined | null): string {
       .replace(/<li[^>]*>/gi, '\n• ')
       .replace(/<[^>]+>/g, ' '),
   );
+}
+
+/**
+ * Convert untrusted HTML-ish source text into plain text. We never render external
+ * HTML in the UI, so stripping here is both a normalization and a security step.
+ *
+ * Some boards (Arbeitnow) ship their markup **double-encoded**: the tags arrive as entities
+ * (`&lt;p&gt;`). Stripping once is therefore not enough — the first pass cannot see the tags
+ * and the decode turns them back into visible `<p>` text. We repeat until the text stops
+ * changing, bounded so a pathological input cannot spin.
+ */
+export function stripHtml(input: string | undefined | null): string {
+  if (!input) return '';
+  let current = input;
+  for (let pass = 0; pass < MAX_STRIP_PASSES; pass += 1) {
+    const next = stripOnce(current);
+    if (next === current) break;
+    current = next;
+  }
+  return current;
 }
 
 /** Remove control characters that can break prompts or logs. */
