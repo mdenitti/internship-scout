@@ -56,6 +56,19 @@ export class HackerNewsSearchProvider implements SearchProvider {
 }
 
 /**
+ * First lines that are a call-to-action or a location are not a company name, e.g.
+ * "SEEKING WORK | Full Stack Developer | California" or "Remote | Intern | Berlin".
+ * Commenters that are not companies themselves (agencies, recruiters) frequently post these,
+ * and we would rather show them as an unattributed comment than invent a company.
+ */
+const NON_COMPANY_HEADERS =
+  /^(seeking|seeking\s+work|hiring|we'?re\s+hiring|apply|applicants|job\s+post|jobs|remote|hybrid|onsite|on-?site|full[- ]?time|part[- ]?time|freelance|contract|internship|intern|graduate|senior|junior|mid[- ]level|worldwide|anywhere|multiple|open\s+positions?)\b/i;
+
+/** Things that are clearly locations or work modes, not company names. */
+const LOCATION_HEADERS =
+  /^(remote|hybrid|on-?site|anywhere|worldwide|europe|emea|usa|u\.?s\.?a\.?|uk|united\s+(kingdom|states|states of america|canada)|canada|germany|france|netherlands|spain|italy|ireland|sweden|poland|portugal|australia|india|brazil|israel|switzerland|austria|denmark|belgium|turkey|latam|apac|americas|california|new\s+york|texas|washington|colorado|berlin|amsterdam|london|paris|dublin|toronto|zurich|stockholm|lisbon|madrid|milano|barcelona|brussels|vienna)\b/i;
+
+/**
  * Split the conventional "Company | Role | Location | ..." first line of hiring comments.
  * Exported for tests.
  */
@@ -69,6 +82,16 @@ export function parseHiringLine(text: string): { company?: string; role?: string
     return { company: parts[0], role: parts[1], location: parts[2] };
   }
   return {};
+}
+
+/** Is the first pipe-separated part plausibly a company name? Exported for tests. */
+export function looksLikeCompany(part: string | undefined): boolean {
+  if (!part) return false;
+  if (NON_COMPANY_HEADERS.test(part) || LOCATION_HEADERS.test(part)) return false;
+  if (LOCATION_HEADERS.test(part.split(/[,(]/)[0] ?? '')) return false;
+  if (!/[a-z]/i.test(part)) return false;
+  // A single "word" that is also a month, a country or a bare level is a header, not a name.
+  return true;
 }
 
 /** Map one Algolia comment hit to a candidate. Exported for tests. */
@@ -86,13 +109,16 @@ export function mapComment(hit: Record<string, unknown>): InternshipCandidate | 
   const looksLikeHiring = /hiring|freelanc/i.test(storyTitle) || parsed.company !== undefined;
   if (!looksLikeHiring) return null;
 
+  // A pipe-separated first part that is a call-to-action or a location ("SEEKING WORK |",
+  // "Remote |") is not a company. Such comments are kept, but attributed to their author.
+  const company = looksLikeCompany(parsed.company) ? parsed.company : undefined;
   const title = truncate(parsed.role ?? text.split('\n')[0] ?? 'Hacker News hiring comment', 200);
-  const company = truncate(parsed.company ?? `Comment by ${asString(hit.author) ?? 'unknown'}`, 120);
-  if (!title || !company) return null;
+  const companyName = truncate(company ?? `Comment by ${asString(hit.author) ?? 'unknown'}`, 120);
+  if (!title || !companyName) return null;
 
   return {
     title,
-    company,
+    company: companyName,
     url: `https://news.ycombinator.com/item?id=${encodeURIComponent(id)}`,
     source: 'hackernews',
     sourceId: id,

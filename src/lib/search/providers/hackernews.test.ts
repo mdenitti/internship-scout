@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapComment, parseHiringLine } from './hackernews';
+import { looksLikeCompany, mapComment, parseHiringLine } from './hackernews';
 
 const NL = String.fromCharCode(10);
 
@@ -30,7 +30,41 @@ describe('parseHiringLine', () => {
   });
 });
 
+describe('looksLikeCompany', () => {
+  it('accepts real company names', () => {
+    expect(looksLikeCompany('Acme BV')).toBe(true);
+    expect(looksLikeCompany('Tether')).toBe(true);
+    expect(looksLikeCompany('Datadog, Inc.')).toBe(true);
+  });
+
+  it('rejects call-to-action headers and locations', () => {
+    expect(looksLikeCompany('SEEKING WORK')).toBe(false);
+    expect(looksLikeCompany('Remote')).toBe(false);
+    expect(looksLikeCompany('Hybrid')).toBe(false);
+    expect(looksLikeCompany('Full-time')).toBe(false);
+    expect(looksLikeCompany('United States')).toBe(false);
+    expect(looksLikeCompany('Netherlands')).toBe(false);
+    expect(looksLikeCompany('Senior')).toBe(false);
+    expect(looksLikeCompany(undefined)).toBe(false);
+  });
+});
+
 describe('mapComment', () => {
+  it('attributes a "SEEKING WORK" header to the author instead of inventing a company', () => {
+    const seeking = {
+      ...hiringComment,
+      comment_text: [
+        'SEEKING WORK | Full Stack Developer | California, USA',
+        '',
+        'We are a small team looking for a JavaScript and TypeScript developer to join our product team long term.',
+      ].join(NL),
+      author: 'gustavoms',
+    };
+    const candidate = mapComment(seeking);
+    expect(candidate?.company).toBe('Comment by gustavoms');
+    expect(candidate?.title).toBe('Full Stack Developer');
+  });
+
   it('keeps comments from hiring threads', () => {
     const candidate = mapComment(hiringComment);
     expect(candidate).not.toBeNull();
