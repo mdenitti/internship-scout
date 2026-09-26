@@ -252,9 +252,15 @@ export function matchesQuery(
       const matched = terms.filter((term) => text.includes(term)).length;
       if (matched < Math.ceil(terms.length / 2)) return false;
     }
+  } else if (terms.length > 0) {
+    // Broad mode: keep ALL *topically relevant* software postings without requiring an
+    // internship keyword — a hiring software company is a prospect regardless. Provider
+    // ranking is loose (Arbeitnow matches any single word), so we require at least one
+    // query term to appear in the posting itself, which drops e.g. HR or data-entry roles
+    // returned for a "software developer" query while keeping real dev jobs.
+    const matched = terms.filter((term) => text.includes(term)).length;
+    if (matched < 1) return false;
   }
-  // Broad mode: no query-term gate — trust the provider's relevance ranking. The user's
-  // explicit filters below (location, work mode, technologies, …) still apply.
 
   if (request.location && !looseKey(internship.location).includes(looseKey(request.location))) return false;
   if (request.region) {
