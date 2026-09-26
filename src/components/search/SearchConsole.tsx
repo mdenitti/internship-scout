@@ -64,6 +64,7 @@ export function SearchConsole({
     companyType: '',
     technologies: '',
     limit: String(settings.search.resultsPerProvider),
+    broadMode: !settings.search.requireInternshipKeyword,
   });
   const [active, setActive] = useState<string[]>(
     providers.filter((provider) => provider.available).map((provider) => provider.id),
@@ -77,7 +78,7 @@ export function SearchConsole({
 
   const fresh = useMemo(() => (result ? result.items.filter((item) => !item.duplicate) : []), [result]);
 
-  function set<K extends keyof typeof form>(key: K, value: string) {
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
@@ -91,13 +92,16 @@ export function SearchConsole({
 
   const keyOf = (item: SearchResultItem, index: number): string => item.candidate.url || `${item.candidate.title}-${index}`;
 
-  async function runSearch() {
+  async function runSearch(overrides?: { broad?: boolean }) {
     if (form.query.trim().length < 2) {
       push({ tone: 'error', title: 'Enter a search query of at least 2 characters.' });
       return;
     }
     setRunning(true);
     try {
+      // Broad discovery: collect ALL software dev postings, because a company that is hiring
+      // developers is usually also open to interns. `broad` can be overridden per run.
+      const broad = overrides?.broad ?? form.broadMode;
       const response = await apiFetch<SearchRunResponse>('/api/search', {
         method: 'POST',
         json: {
@@ -113,6 +117,7 @@ export function SearchConsole({
             : {}),
           limit: Number(form.limit) || 10,
           ...(active.length > 0 ? { providers: active } : {}),
+          broad,
         },
       });
       setResult(response);
@@ -191,7 +196,7 @@ export function SearchConsole({
           <Field label="Query" className="md:col-span-2">
             <Input
               value={form.query}
-              placeholder="frontend, data, embedded…"
+              placeholder="software developer, javascript, react…"
               onChange={(event) => set('query', event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void runSearch();
@@ -219,6 +224,13 @@ export function SearchConsole({
           <Field label="Results per provider">
             <Input type="number" min={1} max={50} value={form.limit} onChange={(event) => set('limit', event.target.value)} />
           </Field>
+          <div className="flex items-end pb-1 md:col-span-2">
+            <Checkbox
+              checked={form.broadMode}
+              onChange={(event) => set('broadMode', event.target.checked)}
+              label="Broad discovery: include all software jobs — a company that is hiring is usually also open to interns"
+            />
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -241,7 +253,7 @@ export function SearchConsole({
               </button>
             ))}
           </div>
-          <Button variant="primary" loading={running} onClick={runSearch}>
+          <Button variant="primary" loading={running} onClick={() => void runSearch()}>
             Search
           </Button>
         </div>
@@ -281,7 +293,7 @@ export function SearchConsole({
 
           {result.items.length === 0 ? (
             <div className="card px-6 py-10 text-center text-sm text-ink-600">
-              No results matched this query. Try fewer filters or another provider.
+              No results matched this query. Try fewer filters, enable Broad discovery, or try another provider.
             </div>
           ) : (
             <ul className="space-y-2">

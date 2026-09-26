@@ -125,7 +125,7 @@ export function SearchSettingsForm({
             <Checkbox
               checked={draft.requireInternshipKeyword}
               onChange={(event) => set('requireInternshipKeyword', event.target.checked)}
-              label="Require at least one internship keyword (except from providers that classify a type)"
+              label="Require at least one internship keyword (except from providers that classify a type). Turn OFF for broad discovery: collect all software jobs, because a hiring company is usually also open to interns."
             />
           </div>
         </div>

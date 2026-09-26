@@ -303,6 +303,12 @@ export const searchRequestSchema = z
     publishedAfter: trimmed(40).optional(),
     limit: z.number().int().min(1).max(50).optional(),
     providers: z.array(trimmed(60)).max(10).optional(),
+    /**
+     * Broad discovery: collect ALL software dev postings, because a company that is hiring
+     * developers is usually also open to interns. When true, the internship-keyword gate is
+     * skipped for this run (overrides the stored default).
+     */
+    broad: z.boolean().optional(),
   })
   .strict();
 

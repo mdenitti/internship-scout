@@ -207,10 +207,10 @@ export function createDefaultProfile(now: Date = new Date()): EvaluationProfile 
       },
       {
         key: 'quality',
-        label: 'Internship quality',
+        label: 'Company-as-internship-host quality',
         weight: 2.5,
         description:
-          'Clarity of the role, ownership, mentorship, compensation and the chance of working on a real project.',
+          'Would this company be a good internship host: clarity of the work, engineering team size and mentorship potential, ownership for a student, and any signs of student friendliness (interns, thesis topics, training).',
       },
     ],
     matchLevels: [
@@ -241,12 +241,18 @@ export function createDefaultAiSettings(overrides: Partial<AiSettings> = {}): Ai
 export function createDefaultSearchSettings(overrides: Partial<SearchSettings> = {}): SearchSettings {
   return {
     enabledProviders: ['demo', 'arbeitnow', 'hackernews'],
-    defaultQuery: 'software development internship',
-    resultsPerProvider: 10,
+    defaultQuery: 'software developer javascript typescript',
+    resultsPerProvider: 20,
     timeoutMs: 15000,
     contact: 'internship-scout',
     internshipKeywords: ['intern', 'internship', 'stage', 'stagiair', 'student', 'graduate', 'trainee', 'werkstudent'],
-    requireInternshipKeyword: true,
+    /**
+     * Discovery mode: false means we collect ALL software development postings, because a
+     * company that is hiring developers is usually also open to interns. The AI evaluation
+     * then scores each company's internship suitability. Users who want internship-only
+     * results can flip this back on in Settings → Search.
+     */
+    requireInternshipKeyword: false,
     ...overrides,
   };
 }

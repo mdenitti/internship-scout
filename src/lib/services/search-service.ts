@@ -52,8 +52,16 @@ export async function runInternshipSearch(input: unknown): Promise<SearchRunOutp
   const providerEnv = { tavilyApiKey: env.tavilyApiKey, contact: settings.search.contact };
 
   const configured = { ...settings.search, ...(request.limit ? { resultsPerProvider: request.limit } : {}) };
+  // Per-run override: broad discovery collects ALL software dev postings (a hiring company is
+  // usually also open to interns). Explicit true/false wins for this run; when omitted the
+  // stored Settings default applies. This keeps the search-form checkbox and the API honest.
+  const effectiveSearchSettings = {
+    ...configured,
+    ...(request.broad === true ? { requireInternshipKeyword: false } : {}),
+    ...(request.broad === false ? { requireInternshipKeyword: true } : {}),
+  };
 
-  let providers: SearchProvider[] = createSearchProviders(configured, providerEnv);
+  let providers: SearchProvider[] = createSearchProviders(effectiveSearchSettings, providerEnv);
   if (request.providers && request.providers.length > 0) {
     providers = providers.filter((provider) => request.providers?.includes(provider.id));
   }
@@ -131,7 +139,7 @@ export async function runInternshipSearch(input: unknown): Promise<SearchRunOutp
         filteredOutCount += 1;
         continue;
       }
-      if (!matchesQuery(outcome.internship, candidate, request, settings.search)) {
+      if (!matchesQuery(outcome.internship, candidate, request, effectiveSearchSettings)) {
         filteredOutCount += 1;
         continue;
       }
@@ -200,8 +208,10 @@ function toPreview(internship: Internship): InternshipPreview {
  * Post-filter applied to normalized candidates.
  *
  * Provider APIs match loosely (Arbeitnow happily returns "Engineering Manager" for the query
- * "intern"), so we enforce the configured internship keywords and the user's own filters
- * here. The keyword list lives in the settings, never in the code.
+ * "intern"), so we enforce the query terms and the user's own filters here. In strict mode we
+ * additionally require an internship keyword; in broad discovery mode (the default) we keep
+ * ALL software dev postings, because a company that is hiring developers is usually also open
+ * to interns. The keyword list lives in the settings, never in the code.
  */
 export function matchesQuery(
   internship: Internship,
@@ -232,10 +242,17 @@ export function matchesQuery(
     .split(/\s+/)
     .map((term) => term.trim())
     .filter((term) => term.length > 2);
-  if (terms.length > 0) {
+  if (terms.length > 0 && settings.requireInternshipKeyword) {
+    // Strict mode: relevant AND internship-like (the old behaviour).
     const matched = terms.filter((term) => text.includes(term)).length;
     if (matched < Math.ceil(terms.length / 2)) return false;
+  } else if (terms.length > 0 && terms.length <= 3) {
+    // Broad mode with a short query: still require minimal topical relevance, but never
+    // require an internship keyword — a hiring software company is a prospect regardless.
+    const matched = terms.filter((term) => text.includes(term)).length;
+    if (matched < 1) return false;
   }
+  // Broad mode with a long/multi-term query: keep everything the provider returned.
 
   if (request.location && !looseKey(internship.location).includes(looseKey(request.location))) return false;
   if (request.region) {
