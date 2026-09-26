@@ -276,16 +276,23 @@ export class PostgresClassificationRepository implements ClassificationRepositor
 
   async saveAll(values: readonly ClassificationValue[]): Promise<ClassificationValue[]> {
     const pool = await this.pool();
-    await pool.query('DELETE FROM classifications');
+    // Upsert each row (then prune stale ones) instead of DELETE + INSERT: concurrent
+    // requests — e.g. two parallel seed calls — must never hit a duplicate-key error.
     let position = 0;
+    const ids: string[] = [];
     for (const value of values) {
-      await pool.query('INSERT INTO classifications (id, kind, position, data) VALUES ($1,$2,$3,$4)', [
-        value.id,
-        value.kind,
-        value.order ?? position,
-        JSON.stringify(value),
-      ]);
+      await pool.query(
+        `INSERT INTO classifications (id, kind, position, data) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, position = EXCLUDED.position, data = EXCLUDED.data`,
+        [value.id, value.kind, value.order ?? position, JSON.stringify(value)],
+      );
+      ids.push(value.id);
       position += 1;
+    }
+    if (ids.length > 0) {
+      await pool.query('DELETE FROM classifications WHERE NOT (id = ANY($1))', [ids]);
+    } else {
+      await pool.query('DELETE FROM classifications');
     }
     return [...values];
   }
