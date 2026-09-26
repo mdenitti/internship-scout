@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { AppShell } from '@/components/layout/AppShell';
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { THEME_INIT_SCRIPT } from '@/lib/client/theme';
 import { getRepositories } from '@/lib/persistence';
 import './globals.css';
 
@@ -25,8 +26,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     .catch(() => null);
 
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the pre-paint script below mutates <html> before React
+    // hydrates, so the server-rendered class attribute is expected to differ.
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Applies the stored (or system) theme before first paint: no flash of the wrong canvas. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router has no _document; fonts are CDN linked once in the root layout */}

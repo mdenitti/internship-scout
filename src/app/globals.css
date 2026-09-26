@@ -34,6 +34,7 @@
   --color-sky-500: #5d7f9b;
   --color-sky-700: #3f5b72;
 
+  --color-sand-50: #faf5ec;
   --color-sand-100: #f1e8d8;
   --color-sand-500: #a3874f;
   --color-sand-700: #77602f;
@@ -46,6 +47,68 @@
   --font-serif: 'Source Serif 4', ui-serif, Georgia, Cambria, 'Times New Roman', serif;
 
   --radius-card: 14px;
+
+  /*
+   * Elevation surface (cards, inputs, toasts). Kept as a token of its own because the
+   * light palette puts it *above* the page canvas, while dark mode puts it below it.
+   */
+  --color-surface: #ffffff;
+}
+
+/*
+ * Dark mode.
+ *
+ * The app is themed through palette *roles* rather than per-component `dark:` variants:
+ * utilities compile to `var(--color-*)`, so overriding the same custom properties on
+ * `html.dark` re-paints every screen at once. Each ramp keeps its light-mode ordering
+ * (higher number = stronger), which is why the roles stay valid on both canvases:
+ *   cream  surfaces   100 = page canvas, 50/200/300/400 = hovers, borders, inputs
+ *   ink    text       500 = muted … 900 = primary
+ *   clay / sage / sky / sand / plum   50/100 = tint background, 500 = solid, 600/700 = text
+ * `html.dark` (not `.dark`) is used so it outranks the `:root` defaults Tailwind emits.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html.dark {
+  color-scheme: dark;
+
+  --color-surface: #222120;
+
+  --color-cream-50: #2b2a27;
+  --color-cream-100: #1a1917;
+  --color-cream-200: #2e2d2a;
+  --color-cream-300: #3a3936;
+  --color-cream-400: #4b4a46;
+
+  --color-ink-500: #96958c;
+  --color-ink-600: #a5a49c;
+  --color-ink-700: #c6c4bb;
+  --color-ink-800: #e0ded6;
+  --color-ink-900: #f4f2ec;
+
+  --color-clay-50: #2a1a13;
+  --color-clay-100: #3b231a;
+  --color-clay-400: #8a4c34;
+  --color-clay-500: #d97757;
+  --color-clay-600: #e28a67;
+  --color-clay-700: #f0a988;
+
+  --color-sage-100: #1e2a1f;
+  --color-sage-500: #6f8a6b;
+  --color-sage-700: #a8c2a3;
+
+  --color-sky-100: #1b2530;
+  --color-sky-500: #5d7f9b;
+  --color-sky-700: #9dbdd4;
+
+  --color-sand-50: #2b2417;
+  --color-sand-100: #332b1a;
+  --color-sand-500: #a3874f;
+  --color-sand-700: #cbb27e;
+
+  --color-plum-100: #241f2a;
+  --color-plum-500: #7d6b96;
+  --color-plum-700: #b3a3c6;
 }
 
 @layer base {
@@ -60,6 +123,8 @@
     font-size: 15px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+    /* Repaint surfaces when the theme flips instead of snapping. */
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
   h1,
@@ -86,15 +151,21 @@
 
 @layer components {
   .card {
-    background: #fff;
+    background: var(--color-surface);
     border: 1px solid var(--color-cream-300);
     border-radius: var(--radius-card);
     box-shadow: 0 1px 2px rgb(20 20 19 / 4%);
   }
 
+  /* A dark canvas needs a lift rather than a shadow to separate a card from the page. */
+  html.dark .card {
+    border-color: var(--color-cream-300);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+  }
+
   .field-input {
     width: 100%;
-    background: #fff;
+    background: var(--color-surface);
     border: 1px solid var(--color-cream-400);
     border-radius: 10px;
     padding: 0.5rem 0.7rem;

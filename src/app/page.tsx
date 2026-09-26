@@ -51,7 +51,7 @@ export default async function DashboardPage() {
           </Link>
           <Link
             href="/internships"
-            className="rounded-[10px] border border-cream-400 bg-white px-3.5 py-2 text-sm font-medium transition-colors hover:border-ink-500"
+            className="rounded-[10px] border border-cream-400 bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:border-ink-500"
           >
             Review all
           </Link>

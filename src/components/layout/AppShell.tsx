@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import type { StoreInfo } from '@/lib/persistence/types';
 
 const NAV_ITEMS = [
@@ -39,13 +40,14 @@ export function AppShell({ children, storageInfo }: { children: ReactNode; stora
                   key={item.href}
                   href={item.href}
                   className={`rounded-full px-3 py-1.5 transition-colors ${
-                    active ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600 hover:bg-cream-200'
+                    active ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-600 hover:bg-cream-200'
                   }`}
                 >
                   {item.label}
                 </Link>
               );
             })}
+            <ThemeToggle className="ml-1" />
           </nav>
 
           {storageInfo ? (

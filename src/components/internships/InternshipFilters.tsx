@@ -252,7 +252,7 @@ export function InternshipFilters({
                       className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                         selected
                           ? 'border-clay-500 bg-clay-50 text-clay-700'
-                          : 'border-cream-400 bg-white text-ink-600 hover:border-ink-500'
+                          : 'border-cream-400 bg-surface text-ink-600 hover:border-ink-500'
                       }`}
                     >
                       {value.label}

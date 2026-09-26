@@ -92,9 +92,29 @@ src/
 │   ├── search/           # search provider abstraction + registry
 │   ├── ai/               # evaluation providers (pollinations, heuristic)
 │   ├── persistence/      # JSON file store / Postgres store
+│   ├── client/           # browser-only helpers (fetch wrapper, theme)
 │   └── util/             # text, url, rate limit, search params helpers
 └── test-support/         # factories shared by the unit tests
 ```
+
+### Theming (light / dark)
+
+The palette is defined once in `app/globals.css` as CSS custom properties under Tailwind's
+`@theme`. Dark mode overrides **the same property names** on `html.dark`, so every
+`bg-cream-100` / `text-ink-900` / `bg-clay-100` utility in the app re-paints without a single
+`dark:` variant in any component. Two rules keep this working:
+
+- **A token means a role, not a shade.** `cream-100` is always the page canvas, `ink-500` is
+  always the faintest text, `clay-100` is always a clay-tinted badge background. Each ramp
+  keeps its light-mode ordering (higher number = stronger) in both themes, so a role stays
+  valid when the canvas inverts.
+- **`--color-surface` exists because elevation flips.** In light mode cards sit *above* the
+  canvas (white on cream); in dark mode they sit *below* it. One token covers both.
+
+`lib/client/theme.ts` decides which theme is active and `ThemeToggle` (in the top bar) writes
+it. Selection is applied by a tiny blocking script in `<head>`, before first paint, so dark-mode
+visitors never see a flash of the light canvas. The choice is stored in `localStorage`; until
+the visitor picks explicitly it follows `prefers-color-scheme`.
 
 ---
 
