@@ -21,8 +21,9 @@ import { getSettings } from './settings-service';
  * Search application service.
  *
  * Responsibilities: validate the incoming query, pick providers, run them with a bounded
- * concurrency, normalize whatever comes back, drop non-internships and non-matching results,
- * and flag duplicates. It returns partial results together with per provider errors, so one
+ * concurrency, normalize whatever comes back, drop non-matching results (broad mode keeps
+ * all software dev postings; strict mode also drops non-internships), and flag duplicates.
+ * It returns partial results together with per provider errors, so one
  * broken source never breaks the whole search.
  */
 
@@ -207,11 +208,14 @@ function toPreview(internship: Internship): InternshipPreview {
 /**
  * Post-filter applied to normalized candidates.
  *
- * Provider APIs match loosely (Arbeitnow happily returns "Engineering Manager" for the query
- * "intern"), so we enforce the query terms and the user's own filters here. In strict mode we
- * additionally require an internship keyword; in broad discovery mode (the default) we keep
- * ALL software dev postings, because a company that is hiring developers is usually also open
- * to interns. The keyword list lives in the settings, never in the code.
+ * Broad discovery mode (the default): the query is sent to the providers for relevance, and
+ * everything usable they return is kept — a company hiring developers is usually also open
+ * to interns, so the AI evaluation scores each company as an internship prospect afterwards.
+ * Only the user's explicit filters (location, work mode, technologies, …) still apply here.
+ *
+ * Strict mode (`requireInternshipKeyword: true`, or `broad: false` for one run): additionally
+ * requires an internship keyword and topical query-term overlap, i.e. the old behaviour for
+ * users who only want postings that are literally internships.
  */
 export function matchesQuery(
   internship: Internship,
@@ -242,17 +246,15 @@ export function matchesQuery(
     .split(/\s+/)
     .map((term) => term.trim())
     .filter((term) => term.length > 2);
-  if (terms.length > 0 && settings.requireInternshipKeyword) {
+  if (settings.requireInternshipKeyword) {
     // Strict mode: relevant AND internship-like (the old behaviour).
-    const matched = terms.filter((term) => text.includes(term)).length;
-    if (matched < Math.ceil(terms.length / 2)) return false;
-  } else if (terms.length > 0 && terms.length <= 3) {
-    // Broad mode with a short query: still require minimal topical relevance, but never
-    // require an internship keyword — a hiring software company is a prospect regardless.
-    const matched = terms.filter((term) => text.includes(term)).length;
-    if (matched < 1) return false;
+    if (terms.length > 0) {
+      const matched = terms.filter((term) => text.includes(term)).length;
+      if (matched < Math.ceil(terms.length / 2)) return false;
+    }
   }
-  // Broad mode with a long/multi-term query: keep everything the provider returned.
+  // Broad mode: no query-term gate — trust the provider's relevance ranking. The user's
+  // explicit filters below (location, work mode, technologies, …) still apply.
 
   if (request.location && !looseKey(internship.location).includes(looseKey(request.location))) return false;
   if (request.region) {
